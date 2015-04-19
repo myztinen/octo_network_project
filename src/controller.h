@@ -3,11 +3,10 @@
 #include "connections.h"
 
 typedef struct meeting {
-    char meetingName[20];
-    char serverName[20];
-    struct sockaddr_in meeting_server;
+    char meeting_topic[20];
+    char meeting_id[10];
     struct sockaddr_in meeting_address;
-    int participant_Amount;
+    int participant_amount;
     struct meeting *next;
     } Meeting;
 
@@ -20,7 +19,10 @@ typedef struct meeting_list{
 typedef struct thread_params {
     struct sockaddr_in client;
     int socket;
+    Meeting_list *meeting_list;
 } Thread_params;
+
+int add_meeting_to_list(Meeting_list *list, Meeting *new_meeting);
 
 int handle_server(int socket, char *buffer);
 

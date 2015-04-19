@@ -12,6 +12,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <ctype.h>
+#include <pthread.h>    
 
 #define BUFFER_LENGTH 300
 
@@ -65,9 +66,7 @@ int parse_command(char *message, int state) {
     free(temp_message);
 
 }
-
-
-int main(int argc, char *argv[]) {
+int test_parse_command() {
     char *test_message1 = "createMeeting Eduskuntavaalit2015";
     char test_message2[100] = "createMeeting Eduskuntavaalit2015";
     char test_message3[100] = "quitquit Eduskuntavaalit2015";
@@ -98,5 +97,32 @@ int main(int argc, char *argv[]) {
 
     printf("Goodbye!\n");
     exit(EXIT_SUCCESS);
+}
+
+int test_message_creation() {
+    char read_buffer[300];
+    memset((void *)read_buffer, 0, 300);
+    strcat(read_buffer, "22");
+    strcat(read_buffer,"01");
+    strcat(read_buffer,"0123456789");
+    strcat(read_buffer,"This is a meeting   ");
+    strcat(read_buffer,"50001");
+    printf("Viestin sisältö on %s\n", read_buffer);
+}
+
+
+
+int main(int argc, char *argv[]) {
+
+    
+        // your code goes here
+    int lol = 5;
+    char lal[3];
+    snprintf(lal, 3, "%d", lol);
+    printf(" Charrina on %soo\n", lal);
+    return 0;
+
+
+
 }
 

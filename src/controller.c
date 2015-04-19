@@ -1,6 +1,20 @@
 #include "connections.h"
 #include "controller.h"
 
+int add_meeting_to_list(Meeting_list *list, Meeting *new_meeting) {
+    Meeting *temp_pointer = list->head;
+    while(1) {
+        if(temp_pointer == NULL) {
+            list->head = new_meeting;
+            return 1;
+        } else {
+            temp_pointer = temp_pointer->next;
+        }
+    }
+}
+
+
+
 
 void sigint_handler(int sig)
 {
