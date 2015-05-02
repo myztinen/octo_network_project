@@ -1,14 +1,80 @@
 #include "client.h"
 
-#define BUFFER_LENGTH 300
+int parse_command(char *message,  Client_state *state) {
+    char *temp_message, *next_pointer;
+    const char delimiter[2] = " ";
+    char send_buffer[BUFFER_LENGTH];
+    int write_len=0;
 
+    temp_message = strdup(message);
+    next_pointer = strtok(temp_message, delimiter);
 
-void echo_line_to_STD(char *buffer, int buffer_size) {
-    int read_amount = 0, max_select, ready, sd = 0;
-    int status = 0;
+    if(strncmp("quitquit", next_pointer, strlen("quitquit")) == 0) {
+        printf("quitquit Called\n");
+        create_QUIT_message(send_buffer, BUFFER_LENGTH);
+        safe_write(state->my_socket, send_buffer, BUFFER_LENGTH);
+    }
+    else if(strncmp("connect", next_pointer, strlen("connect")) == 0) {
+        char *ip = strtok(NULL, delimiter);
+        char *port = strtok(NULL, delimiter);
+        state->my_socket = connect_to(ip, atoi(port), &(state->connection));
+        create_IAMCLIENT_message(send_buffer, BUFFER_LENGTH, "Aapeli");
+        safe_write(state->my_socket, send_buffer, BUFFER_LENGTH);
+        printf("connect Called\n");
+        free(temp_message);
+        return state->my_socket;
+    } 
+    else if(strncmp("disconnect", next_pointer, strlen("disconnect")) == 0) {
+        printf("disconnect Called\n");
+    }
+    else if(strncmp("getMeetings", next_pointer, strlen("getMeetings")) == 0) {
+        printf("getMeetings Called\n");
+    } 
+    else if(strncmp("createMeeting", next_pointer, strlen("createMeeting")) == 0) {
+        printf("createMeeting Called\n");
+        next_pointer = strtok(NULL, delimiter);
+        write_len = create_CREATENEWMEETING_CLIENT_message(send_buffer, BUFFER_LENGTH,  next_pointer);
+        safe_write(state->my_socket, send_buffer, write_len);
+
+    }
+    else if(strncmp("talk", next_pointer, strlen("talk")) == 0) {
+        printf("talk Called\n");
+        next_pointer = strtok(NULL, delimiter);
+        safe_write(state->my_socket, next_pointer, strlen(next_pointer));
+
+    }
+    else if(strncmp("talkTo", next_pointer, strlen("talkTo")) == 0) {
+        printf("talkTo Called\n");
+    }
+    else if(strncmp("help", next_pointer, strlen("help")) == 0) {
+        printf("help Called\n");
+    }
+    else if(strncmp("exit", next_pointer, strlen("help")) == 0) {
+        printf("exit Called\n");
+        exit(EXIT_SUCCESS);
+    } 
+    else {
+        printf("Shit happened\n");
+    }
+    
+    free(temp_message);
+    return 0;
+
+}
+
+void echo_line_to_STD(char *name) {
+    char buffer[BUFFER_LENGTH];
+
+    int read_amount = 0, max_select, ready;
+    Client_state my_state;
+    memset((void *) &(my_state.connection), 0, sizeof(struct sockaddr_in));
+    my_state.connected = 0;
+    my_state.my_socket = 0;
+    my_state.client_id = name;
+    
     fd_set master, rset;
     max_select = STDIN_FILENO;
-    memset(buffer, 0, buffer_size);
+    memset(buffer, 0, BUFFER_LENGTH);
     FD_ZERO(&rset);
     FD_ZERO(&master);
 
@@ -23,43 +89,41 @@ void echo_line_to_STD(char *buffer, int buffer_size) {
         }
         printf("Lähdin Selectistä\n");
 
-        if(FD_ISSET(sd, &rset)) { 
-            read_amount = recv(sd, buffer, buffer_size, 0);
+        if(FD_ISSET(my_state.my_socket, &rset)) { 
+            read_amount = recv(my_state.my_socket, buffer, BUFFER_LENGTH, 0);
             if(read_amount == 0) {
                     printf("Socket closed\n");
-                        close(sd);
-                        FD_CLR(sd, &master);
-                        status = 0;
-                        sd = 0;
+                        close(my_state.my_socket);
+                        FD_CLR(my_state.my_socket, &master);
+                        my_state.connected = 0;
+                        my_state.my_socket = 0;
                     }
  
             write(STDOUT_FILENO, buffer, read_amount);
            
-            memset(buffer, 0, buffer_size);
+            memset(buffer, 0, BUFFER_LENGTH);
 
             }
         if(FD_ISSET(STDIN_FILENO, &rset)) { 
             int read_amount = 0, sent_amount = 0;
 
-            if((read_amount = read(STDIN_FILENO, buffer, (ssize_t)buffer_size)) < 0)
+            if((read_amount = read(STDIN_FILENO, buffer, (ssize_t)BUFFER_LENGTH)) < 0)
                 perror("Error in writing \n");
                 
             if(strncmp(buffer, "\n", 1) == 0)
                 continue;
-            if(sd == 0) {
-                sd = parse_command(buffer, 3);
-            } else {
-                parse_command(buffer, 3);
-            }
-            printf("SD on %d\n", sd);
-            printf("Status on %d\n", status);
 
-            if (status == 0 && sd != 0) {
-                FD_SET(sd, &master);
-                if (sd > max_select) {
-                    max_select = sd;
+            parse_command(buffer, &my_state);
+             
+            printf("SD on %d\n", my_state.my_socket);
+            printf("Status on %d\n",  my_state.connected);
+
+            if ( my_state.connected == 0 && my_state.my_socket != 0) {
+                FD_SET(my_state.my_socket, &master);
+                if (my_state.my_socket > max_select) {
+                    max_select = my_state.my_socket;
                 }
-                status  = 1;
+                 my_state.connected  = 1;
             }
             if((sent_amount = write(STDOUT_FILENO, buffer, read_amount)) < 0)
                 perror("Error in writing\n");
@@ -70,42 +134,15 @@ void echo_line_to_STD(char *buffer, int buffer_size) {
 }
 
 
+int main(int argc, char *argv[]) {
 
-
-int create_listening_socket(int port) {
-    int listenfd;
-
-    struct sockaddr_in serv_addr;
-
-    if ( (listenfd = socket(AF_INET, SOCK_STREAM, PF_UNSPEC)) < 0) {
-        perror("Error in creating stream socket");
+    
+    if(argc != 2) {
+        printf("Invalid arg count. Start by ./client <myName>\n");
         exit(EXIT_FAILURE);
     }
-    
-    memset((void *) &serv_addr, 0, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    serv_addr.sin_port = htons(port);
-    if ((bind(listenfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr))) < 0)
-        perror("Binding local address") ;
-    listen(listenfd, 5);
-    
-    return listenfd;
-}
 
-
-int main(int argc, char *argv[]) {
-    int my_socket, server_listening_socket;
-    pid_t my_pid;
-
-    char my_buffer[BUFFER_LENGTH];
-
-    /*
-    if((my_socket = tcpConnect(argv[1], atoi(argv[2]))) == 0) {
-        perror("Did not get the socket\n");
-        exit(EXIT_FAILURE);
-    }*/
-    echo_line_to_STD(my_buffer, BUFFER_LENGTH);
+    echo_line_to_STD(argv[1]);
 
     exit(EXIT_SUCCESS);
     

@@ -110,18 +110,25 @@ int test_message_creation() {
     printf("Viestin sisältö on %s\n", read_buffer);
 }
 
+int create_test_meetings() {
+    Meeting_list *my_meetings = (void *) malloc(sizeof(Meeting_list));
+    init_meeting_list(my_meetings);
+    Meeting *test_meeting = create_new_meeting("Lollotilol", "0123456789", &controller_addr,2);
+    Meeting *test_meeting2 = create_new_meeting("Kakkapylly", "2345678943", &controller_addr,0);
+    add_meeting_to_list(my_meetings, test_meeting);
+    add_meeting_to_list(my_meetings, test_meeting2);
+
+}
+
 
 
 int main(int argc, char *argv[]) {
 
     
-        // your code goes here
-    int lol = 5;
-    char lal[3];
-    snprintf(lal, 3, "%d", lol);
-    printf(" Charrina on %soo\n", lal);
-    return 0;
-
+    char *s = "01234";
+    unsigned int sz = 10;
+    char *pad = "0000000000000000000000000000";
+    printf ("%.*s%s\n", (sz < strlen(s)) ? 0 : sz - (int)strlen(s), pad, s);
 
 
 }
