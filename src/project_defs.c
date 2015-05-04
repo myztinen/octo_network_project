@@ -20,4 +20,6 @@ const char *MEETINGTERMINATED = "23";
 const char *CREATENEWMEETING_CONTROLLER = "30";
 const char *LISTOFMEETINGS_CONTROLLER = "31";
 
+const char *HELPTEXT = "****************************************\n*          CLIENT APPLICATION          *\n*      Commands:                       *\n*       connect <ip address> <port>    *\n*       quitquit                       *\n*       help                           *\n*       talk <message>                 *\n*       getMeetings                    *\n*       createMeeting <meeting topic>  *\n*       exit                           *\n****************************************\n";
+
 

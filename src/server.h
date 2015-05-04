@@ -7,7 +7,7 @@ struct meeting_params  {
     char *topic;
     int port;  
 };
+void handle_meeting(int socket);
 
-int handle_meeting(int meeting_socket);
 typedef struct meeting_params Meeting_params; 
 

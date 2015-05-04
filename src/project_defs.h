@@ -46,7 +46,7 @@ extern const char *MEETINGTERMINATED;
 
 extern const char *CREATENEWMEETING_CONTROLLER;
 extern const char *LISTOFMEETINGS_CONTROLLER;
-
+extern const char *HELPTEXT;
 
  struct meeting {
     char meeting_topic[20];
@@ -72,10 +72,22 @@ extern const char *LISTOFMEETINGS_CONTROLLER;
     int amount;
     struct meeting_server *head;
     };
+
     
 typedef struct meeting Meeting;
 typedef struct meeting_server Meeting_server;
 typedef struct meeting_server_list Meeting_server_list;
+
+struct client_state  {
+    struct sockaddr_in connection;
+    int my_socket;
+    int connected;
+    char *client_id;
+    
+};
+
+typedef struct client_state Client_state; 
+
 
 
 #endif

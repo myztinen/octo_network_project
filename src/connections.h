@@ -18,6 +18,9 @@ int create_LISTOFMEETINGS_CONTROLLER_message(char *buffer, int buffer_len, Meeti
 int create_CREATENEWMEETING_CLIENT_message(char *buffer, int buffer_len,  char *topic);
 int create_CREATENEWMEETING_CONTROLLER_message(char *buffer, int buffer_len,  char *topic);
 int create_QUIT_message(char *buffer, int buffer_len);
+int create_GETDISCUSSIONS_message(char *buffer, Meeting_server_list *list, int buffer_len);
+int create_TALK_message(char *message, Client_state *state, char *buffer, int buffer_len);
+
 
 
 #endif

@@ -9,7 +9,10 @@ Meeting_server* create_new_server(Meeting_server *server, char *server_id, struc
 int add_server_to_server_list(Meeting_server *server, Meeting_server_list *list);
 int add_meeting_to_list(Meeting_server_list *list, Meeting *new_meeting);
 int remove_meeting_from_list(Meeting_server *server, char *removable_id);
+int remove_server_from_meeting_server_list(Meeting_server *server, Meeting_server_list *list);
 void print_meetings(Meeting_server_list *server_list);
+int select_server(Meeting_server_list *list);
+
 
 
 #endif

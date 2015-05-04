@@ -9,6 +9,7 @@ int safe_write(int socket, const char *buffer, int len) {
 
         exit(EXIT_FAILURE);
     }
+    //memset((void *) buffer, 0, len);
     return write_amount;
 }
 
@@ -21,8 +22,7 @@ int safe_read(int socket, char *buffer, int len) {
         write(STDOUT_FILENO, "\n", 1);
         exit(EXIT_FAILURE);
     }
-    //printf("Luin juuri %d tavua. Viesti oli %s\n", read_amount, buffer);
-
+ 
     return read_amount;
 }
 
@@ -128,7 +128,8 @@ int create_LISTOFMEETINGS_SERVER_message(char *buffer, int buffer_len, Meeting_s
     if(server->amount_of_meetings == 0) return message_len;
     while(iter != NULL) {
         memset((void *) meeting_port, 0, 6);
-        snprintf(meeting_port, 6, "%d",  ntohs(iter->port));
+        snprintf(meeting_port, 6, "%d",  iter->port);
+        
         message_len += add_to_buffer(buffer, iter->meeting_id,10);
         message_len += add_to_buffer(buffer, iter->meeting_topic, 20);
         message_len += add_to_buffer(buffer, meeting_port,5);
@@ -196,7 +197,6 @@ int create_CREATENEWMEETING_CONTROLLER_message(char *buffer, int buffer_len,  ch
         memset((void *)buffer, 0, buffer_len);
         return 0;
     }
-
     message_len += add_to_buffer(buffer, topic, 20);
     return message_len;
 }
@@ -207,3 +207,56 @@ int create_QUIT_message(char *buffer, int buffer_len) {
     message_len += add_to_buffer(buffer, QUIT, 2);
     return message_len;
 }
+
+int create_GETDISCUSSIONS_message(char *buffer, Meeting_server_list *list, int buffer_len) {
+    memset((void *)buffer, 0, buffer_len);
+    int message_len = 0;
+    char address[INET_ADDRSTRLEN];
+    char meeting_port[6];
+    Meeting *meeting_iter;
+    Meeting_server *server_iter = list->head;
+    if(server_iter == NULL) {
+        message_len += add_to_buffer(buffer, "No meeting servers available!\n",30);
+        return message_len;
+    }
+    meeting_iter = server_iter->head;
+
+    while(server_iter != NULL) {
+        meeting_iter = server_iter->head;
+        if(meeting_iter == NULL && message_len == 0) {
+            message_len += add_to_buffer(buffer, "No meetings available! You create one if you like.\n",51);
+            return message_len;
+        }
+        while(meeting_iter != NULL) {
+            message_len += add_to_buffer(buffer, "Topic:",6);
+            message_len += add_to_buffer(buffer, meeting_iter->meeting_topic,20);
+            message_len += add_to_buffer(buffer, "IP:",3);
+            inet_ntop(AF_INET, &(server_iter->server_address.sin_addr), address, INET_ADDRSTRLEN);
+            message_len += add_to_buffer(buffer, address,INET_ADDRSTRLEN);
+            message_len += add_to_buffer(buffer, "Port:",5);
+            snprintf(meeting_port, 6, "%d",  meeting_iter->port);
+            message_len += add_to_buffer(buffer, meeting_port,5);
+            strncat(buffer, "\n", 1);
+            message_len += 1;
+            meeting_iter = meeting_iter->next;
+        }
+    server_iter = server_iter->next;
+    }
+    return message_len;
+}
+
+int create_TALK_message(char *message, Client_state *state, char *buffer, int buffer_len) {
+    memset((void *)buffer, 0, buffer_len);
+    int message_len = 0;
+    message_len += add_to_buffer(buffer, state->client_id, strlen(state->client_id));
+    strncat(buffer, ">>> ", 4);
+    message_len += 4;
+    message_len += add_to_buffer(buffer, message, strlen(message));
+    return message_len;
+}
+
+
+
+    
+
+    
