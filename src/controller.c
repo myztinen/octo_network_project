@@ -113,8 +113,6 @@ int handle_client(int socket, char *send_buffer, char *rec_buffer,  struct socka
         perror("sigaction");
         exit(EXIT_FAILURE);
     }       
-
-    
     while(1) {
         temp_message = strdup(rec_buffer);
         next_pointer = strtok(temp_message, delimiter);

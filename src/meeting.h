@@ -2,15 +2,39 @@
 #define MEETING_H
 #include "project_defs.h"
 
-
-void * init_meeting_server_list(Meeting_server_list *pointer);
-Meeting* create_new_meeting(Meeting *new_meeting, char *new_topic, char *new_id, int new_participant_amount, int port);
-Meeting_server* create_new_server(Meeting_server *server, char *server_id, struct sockaddr_in *addr, int connection_socket);
+/*
+ * Inititialize Meeting_server_list with initial values
+ */
+void init_meeting_server_list(Meeting_server_list *pointer);
+/*
+ * Inititialize Meeting with given values.
+ */
+void create_new_meeting(Meeting *new_meeting, char *new_topic, char *new_id, int new_participant_amount, int port);
+/*
+ * Inititialize Meeting_server with given values.
+ */
+void create_new_server(Meeting_server *server, char *server_id, struct sockaddr_in *addr, int connection_socket);
+/*
+ * Adds the information from connected server to the Meeting_server_list
+ */
 int add_server_to_server_list(Meeting_server *server, Meeting_server_list *list);
+/*
+ * Adds the information from Meeting to the Meeting_server
+ */
 int add_meeting_to_list(Meeting_server_list *list, Meeting *new_meeting);
-int remove_meeting_from_list(Meeting_server *server, char *removable_id);
+/*
+ * Removes the Server and the meetings that it contains from 
+ * Meeting_server_list.
+ */
 int remove_server_from_meeting_server_list(Meeting_server *server, Meeting_server_list *list);
+/*
+ * Prints all meetings known to Controller. Used for debugging purposes
+ */
 void print_meetings(Meeting_server_list *server_list);
+/*
+ * Controller uses this to select Server application that has the least
+ * amount of meetings.
+ */
 int select_server(Meeting_server_list *list);
 
 

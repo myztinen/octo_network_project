@@ -9,7 +9,6 @@ int safe_write(int socket, const char *buffer, int len) {
 
         exit(EXIT_FAILURE);
     }
-    //memset((void *) buffer, 0, len);
     return write_amount;
 }
 
@@ -22,7 +21,6 @@ int safe_read(int socket, char *buffer, int len) {
         write(STDOUT_FILENO, "\n", 1);
         exit(EXIT_FAILURE);
     }
- 
     return read_amount;
 }
 
@@ -38,8 +36,6 @@ int add_to_buffer(char *buffer, const char *addative, int field_size) {
 
 int connect_to(char *ip_address, int port, struct sockaddr_in *server_addr) {
     int return_value, handle;
-    
-
     if ((handle = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         perror ("Could not create socket\n");
         handle = 0;
@@ -70,19 +66,11 @@ int tcp_listen(int port, struct sockaddr_in *serv_addr) {
     setsockopt(listening_socket, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(int));
 
     if ((bind(listening_socket, (struct sockaddr *) serv_addr, sizeof(struct sockaddr_in))) < 0) {
-        perror("Binding local address");
+        perror("Could not bind to the port!!!");
         exit(EXIT_FAILURE);
     }
     listen(listening_socket, 5);
     return listening_socket;
-}
-
-int create_HELLO_message(char *buffer, int buffer_len) {
-    int message_len = 0;
-    memset((void *)buffer, 0, buffer_len);
-    message_len += add_to_buffer(buffer, HELLO, 2);
-    printf("Viestin sisältö on %s\n", buffer);
-    return message_len;
 }
 
 int create_IAMSERVER_message(char *buffer, int buffer_len, const char *server_id) {
@@ -98,12 +86,13 @@ int create_IAMSERVER_message(char *buffer, int buffer_len, const char *server_id
     message_len += add_to_buffer(buffer, server_id, 10);
     return message_len;
 }
+
 int create_IAMCLIENT_message(char *buffer, int buffer_len, const char *server_id) {
     int message_len = 0;
     memset((void *)buffer, 0, buffer_len);
     message_len += add_to_buffer(buffer, IAMCLIENT, 2);
 
-    if(strlen(server_id) > 10 || strlen(server_id) < 3) {
+    if(strlen(server_id) > 10 || strlen(server_id) < 2) {
         perror("server id is not valid length!!\n");
         exit(EXIT_FAILURE);
     }
@@ -111,8 +100,7 @@ int create_IAMCLIENT_message(char *buffer, int buffer_len, const char *server_id
     message_len += add_to_buffer(buffer, server_id, 10);
     return message_len;
 }
-
-
+ 
 int create_LISTOFMEETINGS_SERVER_message(char *buffer, int buffer_len, Meeting_server *server) {
     Meeting *iter = server->head;
     int message_len = 0;
@@ -129,7 +117,6 @@ int create_LISTOFMEETINGS_SERVER_message(char *buffer, int buffer_len, Meeting_s
     while(iter != NULL) {
         memset((void *) meeting_port, 0, 6);
         snprintf(meeting_port, 6, "%d",  iter->port);
-        
         message_len += add_to_buffer(buffer, iter->meeting_id,10);
         message_len += add_to_buffer(buffer, iter->meeting_topic, 20);
         message_len += add_to_buffer(buffer, meeting_port,5);
@@ -140,38 +127,6 @@ int create_LISTOFMEETINGS_SERVER_message(char *buffer, int buffer_len, Meeting_s
     return message_len;
 }
 
-int create_LISTOFMEETINGS_CONTROLLER_message(char *buffer, int buffer_len, Meeting_server_list *list) {
-    Meeting_server *serv_iter =list->head;
-    Meeting *iter = serv_iter->head;
-    int message_len = 0;
-    char list_amount[3];
-    char participants[3];
-    char meeting_port[6];
-    snprintf(list_amount, 2, "%d",  list->amount);
-    
-    memset((void *)buffer, 0, buffer_len);
-    message_len += add_to_buffer(buffer, LISTOFMEETINGS_CONTROLLER, 2);
-    message_len += add_to_buffer(buffer, list_amount, 2);
-    if(serv_iter->amount_of_meetings == 0) return message_len;
-    while(serv_iter != NULL) {
-        if(serv_iter->head != NULL) {
-            while(iter != NULL) {
-                memset((void *) meeting_port, 0, 6);
-                snprintf(meeting_port, 6, "%d",  ntohs(iter->port));
-                message_len += add_to_buffer(buffer, iter->meeting_id,10);
-                message_len += add_to_buffer(buffer, iter->meeting_topic, 20);
-                message_len += add_to_buffer(buffer, meeting_port,5);
-                snprintf(participants, 2, "%d",  iter->participant_amount);
-                message_len += add_to_buffer(buffer, participants,2);
-                message_len += add_to_buffer(buffer, participants,2);
-                strncat(buffer, "\n", 1); 
-                iter = iter->next;
-            }
-        }
-        serv_iter = serv_iter->next;
-    }
-    return message_len;
-}
 
 int create_CREATENEWMEETING_CLIENT_message(char *buffer, int buffer_len,  char *topic) {
     int message_len = 0;

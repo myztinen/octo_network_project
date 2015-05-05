@@ -7,12 +7,10 @@ void sigint_handler(int sig)
 
 int init_controller_connection(int socket, char *send_buffer, char *rec_buffer, char *my_id) {
     int message_len;
-
     message_len = create_IAMSERVER_message(send_buffer, BUFFER_LENGTH, my_id);
     safe_write(socket, send_buffer, message_len);
     safe_read(socket, rec_buffer, BUFFER_LENGTH);
     if(strncmp(rec_buffer, ACK, 2) == 0) {
-        printf("viesti on %s. Init suoritettu! \n", rec_buffer);
         return 1;
     } else {
         perror("Could not initialize connection to server\n");
@@ -21,13 +19,11 @@ int init_controller_connection(int socket, char *send_buffer, char *rec_buffer, 
 }
 
 
-
 static void *meeting_handler_thread(void *params) {
     char send_buffer[BUFFER_LENGTH];
     int message_len;
     Meeting_server *server_pointer =  ((Meeting_params *) params)->my_server;
     char *new_topic = ((Meeting_params *) params)->topic;
-    printf("Topic on %s \n", new_topic);
     int my_port = ((Meeting_params *) params)->port;
     free(params);
     Meeting *this_meeting = (void *) malloc(sizeof(Meeting));
@@ -43,28 +39,22 @@ static void *meeting_handler_thread(void *params) {
     add_meeting_to_server(server_pointer, this_meeting);
     message_len = create_LISTOFMEETINGS_SERVER_message(send_buffer, BUFFER_LENGTH, server_pointer);
     safe_write(server_pointer->socket, send_buffer, message_len);
-    handle_meeting(meeting_socket);
+    meeting_runner(meeting_socket);
     return(NULL);
 }
 
-void handle_meeting(int socket) {
+void meeting_runner(int socket) {
     fd_set master;   
     fd_set read_fds; 
     int fdmax;
-
     int client_fd; 
     struct sockaddr_storage remoteaddr;
     socklen_t addrlen;
-
     char buf[BUFFER_LENGTH];  
     int message_len;
-
     int iterable_fd, other_fd;
-
-
     FD_ZERO(&master);    
     FD_ZERO(&read_fds);
-
     FD_SET(socket, &master);
     fdmax = socket; 
 
@@ -80,7 +70,8 @@ void handle_meeting(int socket) {
         // Loop through all existing connections
         for(iterable_fd = 0; iterable_fd <= fdmax; iterable_fd++) {
             if (FD_ISSET(iterable_fd, &read_fds)) {
-                // If the connection is new connction
+                // If the connection is new connction, accept connection
+                // and add it to master fd set-
                 if (iterable_fd == socket) {
                     addrlen = sizeof remoteaddr;
                     client_fd = accept(socket,(struct sockaddr *)&remoteaddr,&addrlen);
@@ -107,6 +98,9 @@ void handle_meeting(int socket) {
                         close(iterable_fd); 
                         FD_CLR(iterable_fd, &master);
                     } else {
+                        // If messages from existing connections, send
+                        // them to every socket exept our Meetings
+                        // socket and senders socket.
                         for(other_fd = 0; other_fd <= fdmax; other_fd++) {
                             if (FD_ISSET(other_fd, &master)) {
                                 if (other_fd != socket && other_fd != iterable_fd) {
@@ -136,12 +130,17 @@ int main(int argc, char *argv[]) {
     const char delimiter[2] = " ";
 
 
-    
     if(argc != 4) {
         printf("Invalid arg count. Start by ./server <ip address> <port> <server id>\n");
         exit(EXIT_FAILURE);
     }
-
+    
+    if(strlen(argv[3]) != 10)  {
+        printf("Server Id must be 10 chars long\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    //Initialise the Meeting_server parameters
     Meeting_server *my_meetings = (void *)malloc(sizeof(Meeting_server));
     strcpy(my_meetings->server_id, argv[3]);
     my_meetings->amount_of_meetings = 0;
@@ -166,6 +165,11 @@ int main(int argc, char *argv[]) {
     write_amount =  safe_write(my_meetings->socket, send_buffer, message_length);    
     while(1) {
         read_amount = safe_read(my_meetings->socket,read_buffer, BUFFER_LENGTH);
+        if(read_amount == 0) {
+            printf("Socket closed\n");
+            close(my_meetings->socket);
+            exit(EXIT_FAILURE);
+        }
         temp_message = strdup(read_buffer);
         next_pointer = strtok(temp_message, delimiter);
 

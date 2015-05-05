@@ -1,6 +1,10 @@
 #ifndef PROJECT_DEFS_H
 #define PROJECT_DEFS_h
-
+/*
+ * This file contains all included system header files and data 
+ * data structures that the program is using. also constants that
+ * are used in different appllications are stored here.
+ */
 
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -18,14 +22,10 @@
 #include <ctype.h>
 #include <pthread.h>
 #include <time.h>
-
-
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <sys/un.h>
 
 #define BUFFER_LENGTH 1000
-#define LOCAL_SOCKET "meeting_listener"
 
 extern const char *HELLO;
 extern const char *ACK;

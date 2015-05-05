@@ -1,5 +1,6 @@
 #include "client.h"
 
+
 int parse_command(char *message,  Client_state *state) {
     char *temp_message, *next_pointer;
     const char delimiter[2] = " ";
@@ -12,14 +13,33 @@ int parse_command(char *message,  Client_state *state) {
     if(strncmp("quitquit", next_pointer, strlen("quitquit")) == 0) {
         create_QUIT_message(send_buffer, BUFFER_LENGTH);
         safe_write(state->my_socket, send_buffer, BUFFER_LENGTH);
-    }
-    else if(strncmp("connect", next_pointer, strlen("connect")) == 0) {
+        shutdown(state->my_socket, SHUT_RD);
+
+    } else if(strncmp("connectController", next_pointer, strlen("connectController")) == 0) {
+        if(state->connected == 1) {
+            printf("*******Already connected to somewhere! Disconnect first******\n");
+            free(temp_message);
+            return 0;
+        }
         char *ip = strtok(NULL, delimiter);
         char *port = strtok(NULL, delimiter);
         state->my_socket = connect_to(ip, atoi(port), &(state->connection));
         create_IAMCLIENT_message(send_buffer, BUFFER_LENGTH, state->client_id);
         safe_write(state->my_socket, send_buffer, BUFFER_LENGTH);
-        printf("connect Called\n");
+        state->connected = 1;
+        free(temp_message);
+        return state->my_socket;
+    
+    } else if(strncmp("connectClient", next_pointer, strlen("connectClient")) == 0) {
+        if(state->connected == 1) {
+            printf("*******Already connected to somewhere! Disconnect first******\n");
+            free(temp_message);
+            return 0;
+        }
+        char *ip = strtok(NULL, delimiter);
+        char *port = strtok(NULL, delimiter);
+        state->my_socket = connect_to(ip, atoi(port), &(state->connection));
+        safe_write(state->my_socket, "User connected\n", 16);
         state->connected = 1;
         free(temp_message);
         return state->my_socket;
@@ -27,18 +47,26 @@ int parse_command(char *message,  Client_state *state) {
         safe_write(state->my_socket, GETDISCUSSIONS, 2);
     } else if(strncmp("createMeeting", next_pointer, strlen("createMeeting")) == 0) {
         next_pointer = strtok(NULL, delimiter);
+        if(strlen(next_pointer) > 20 ) {
+            printf("*******Meeting topic must be less than 20 characters******\n");
+            free(temp_message);
+            return 0;
+        }
         write_len = create_CREATENEWMEETING_CLIENT_message(send_buffer, BUFFER_LENGTH,  next_pointer);
         safe_write(state->my_socket, send_buffer, write_len);
-
     } else if(strncmp("talk", next_pointer, strlen("talk")) == 0) {
         next_pointer = strtok(NULL, delimiter);
+        if(strlen(next_pointer) > 255 ) {
+            printf("*******Your Message must be less than 255 characters******\n");
+            free(temp_message);
+            return 0;
+        }
         write_len = create_TALK_message(next_pointer, state, send_buffer, BUFFER_LENGTH); 
         safe_write(state->my_socket, send_buffer, write_len);
-
     } else if(strncmp("help", next_pointer, strlen("help")) == 0) {
-        printf("help Called\n");
+        printf("%s\n",HELPTEXT);
     } else if(strncmp("exit", next_pointer, strlen("help")) == 0) {
-        printf("Exiting pogram. GOODBYE\n");
+        printf("*************** Exiting pogram. GOODBYE ******************\n");
         exit(EXIT_SUCCESS);
     } else {
         printf("Did not understand the command. Try again\n");
@@ -46,12 +74,10 @@ int parse_command(char *message,  Client_state *state) {
     
     free(temp_message);
     return 0;
-
 }
 
 void user_interface(char *name) {
     char buffer[BUFFER_LENGTH];
-
     int read_amount = 0, sent_amount = 0, max_select, ready;
     Client_state my_state;
     memset((void *) &(my_state.connection), 0, sizeof(struct sockaddr_in));
@@ -98,7 +124,7 @@ void user_interface(char *name) {
 
             parse_command(buffer, &my_state);
 
-            if ( my_state.connected == 0 && my_state.my_socket != 0) {
+            if ( my_state.my_socket != 0) {
                 FD_SET(my_state.my_socket, &master);
                 if (my_state.my_socket > max_select) {
                     max_select = my_state.my_socket;
@@ -111,13 +137,15 @@ void user_interface(char *name) {
 
 
 int main(int argc, char *argv[]) {
-
-    
+  
     if(argc != 2) {
         printf("Invalid arg count. Start by ./client <myName>\n");
         exit(EXIT_FAILURE);
     }
-
+    if(strlen(argv[1]) > 10 || strlen(argv[1]) < 2) {
+        printf("Your name must be between 2 and 10 chars\n");
+        exit(EXIT_FAILURE);
+    }
     user_interface(argv[1]);
 
     exit(EXIT_SUCCESS);
