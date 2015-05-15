@@ -13,7 +13,6 @@ const char *TALK = "14";
 const char *TALKTO = "15";
 
 const char *IAMSERVER = "20";
-const char *MEETINGINFORMATION = "21";
 const char *LISTOFMEETINGS_SERVER = "22";
 const char *MEETINGTERMINATED = "23";
 
@@ -23,8 +22,7 @@ const char *LISTOFMEETINGS_CONTROLLER = "31";
 const char *HELPTEXT = "**************************************************\n"
                         "*          CLIENT APPLICATION                    *\n"
                         "*      Commands:                                 *\n"
-                        "*       connectClient <ip address> <port>        *\n"
-                        "*       connectController <ip address> <port>    *\n"
+                        "*       connect <ip address> <port>              *\n"
                         "*       quitquit                                 *\n"
                         "*       help                                     *\n"
                         "*       talk <message>                           *\n"

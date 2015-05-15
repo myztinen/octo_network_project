@@ -1,5 +1,5 @@
 #ifndef PROJECT_DEFS_H
-#define PROJECT_DEFS_h
+#define PROJECT_DEFS_H
 /*
  * This file contains all included system header files and data 
  * data structures that the program is using. also constants that
@@ -57,7 +57,8 @@ extern const char *HELPTEXT;
     };
 
     
- struct meeting_server{
+ struct meeting_server {
+    pthread_mutex_t server_mutex;
     char server_id[10];
     struct sockaddr_in server_address;
     int amount_of_meetings;
@@ -88,6 +89,18 @@ struct client_state  {
 
 typedef struct client_state Client_state; 
 
+struct meeting_participant {
+    char participant_id[10];
+    int participant_socket;
+    struct meeting_participant *next;
+};
+
+typedef struct meeting_participant Meeting_participant;
+
+typedef struct participant_list {
+    struct meeting_participant *head;
+    int participant_amount;
+} Participant_list;
 
 
 #endif

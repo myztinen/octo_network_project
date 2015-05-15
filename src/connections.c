@@ -4,9 +4,6 @@ int safe_write(int socket, const char *buffer, int len) {
     int write_amount = 0;
     if((write_amount = write(socket, buffer, len)) < 0) {
         perror("Error in writing. Global errno is ");
-        write(STDOUT_FILENO, &errno, 1);
-        write(STDOUT_FILENO, "\n", 1);
-
         exit(EXIT_FAILURE);
     }
     return write_amount;
@@ -17,8 +14,6 @@ int safe_read(int socket, char *buffer, int len) {
     int read_amount = 0;
     if((read_amount = read(socket, buffer, len)) < 0) {
         perror("Error in reading. Global errno is ");
-        write(STDOUT_FILENO, &errno, 1);
-        write(STDOUT_FILENO, "\n", 1);
         exit(EXIT_FAILURE);
     }
     return read_amount;
@@ -28,7 +23,6 @@ int add_to_buffer(char *buffer, const char *addative, int field_size) {
     char temp[field_size+1];
     char *padding = "0000000000000000000000000000";
     sprintf(temp, "%.*s%s", (field_size < strlen(addative)) ? 0 : field_size - (int)strlen(addative), padding, addative);
-
     strncat(buffer, temp, field_size);
     strncat(buffer, " ", 1); 
     return field_size+1;
@@ -210,8 +204,24 @@ int create_TALK_message(char *message, Client_state *state, char *buffer, int bu
     return message_len;
 }
 
+int create_participant_list_message(char * buffer, Participant_list *list, int buffer_len) {
+    memset((void *)buffer, 0, buffer_len);
+    int message_len = 0;
+    Meeting_participant *temp_pointer = list->head;
+    while(temp_pointer != NULL) {
+        message_len += add_to_buffer(buffer, temp_pointer->participant_id, strlen(temp_pointer->participant_id));
+        strncat(buffer, "\n", 2);
+        message_len += 2;
+        temp_pointer = temp_pointer->next;
+    }
+    return message_len;
+  }
 
-
-    
-
+int create_MEETINGTERMINATED_message(char * buffer, Meeting *this_meeting, int buffer_len) {
+    memset((void *)buffer, 0, buffer_len);
+    int message_len = 0;
+    message_len += add_to_buffer(buffer, MEETINGTERMINATED, 2);
+    message_len += add_to_buffer(buffer, this_meeting->meeting_id, 10);
+    return message_len;
+}
     

@@ -1,9 +1,27 @@
 #include "server.h"
+
 void sigint_handler(int sig)
 {
-    write(0, "Ahhh! SIGINT!\n", 14);
-    exit(EXIT_SUCCESS);
+    write(STDOUT_FILENO, "SIGPIPE received!\n", 18);
+    pthread_exit(NULL);
 }
+
+
+
+static void *empty_meeting_timer(void  *params) {   
+    char buffer[30];
+    int message_len = 0;
+    
+    message_len = create_MEETINGTERMINATED_message(buffer, ((Timer_params *)params)->this_meeting, 30);
+    safe_write(((Timer_params *)params)->this_server->socket, buffer, message_len);
+    if(timer_delete(*(((Timer_params *)params)->timer)) < 0)
+        perror("Could not delete timer!!\n");
+    printf("Removed meeting with topic %s\n", ((Timer_params *)params)->this_meeting->meeting_topic);
+    remove_meeting_from_meeting_server(((Timer_params *)params)->this_meeting, ((Timer_params *)params)->this_server);
+    pthread_exit(NULL);
+
+}
+
 
 int init_controller_connection(int socket, char *send_buffer, char *rec_buffer, char *my_id) {
     int message_len;
@@ -31,19 +49,78 @@ static void *meeting_handler_thread(void *params) {
     int meeting_socket;
     char meeting_id[10];
     pthread_detach(pthread_self());
-
+    
+    /* Start listening the socket for meeting attendees and add the 
+     * Meeting data structure to the common Meeting_server data structure.
+     */
     meeting_socket = tcp_listen(my_port, &meeting_address);
     srand(time(NULL));
     snprintf(meeting_id, 10, "%d",  (rand()%10000));
     create_new_meeting(this_meeting, new_topic, meeting_id, 0, my_port);
     add_meeting_to_server(server_pointer, this_meeting);
+    /*
+     * Create participant list for this meeting
+     */
+    Participant_list *attendee_list = (void *) malloc(sizeof(Participant_list));
+    attendee_list->participant_amount = 0;
+    attendee_list->head = NULL;
+    
+    /*
+     * Relay the current meetings from this server to the Controller and
+     * start the actual meeting.
+     */
     message_len = create_LISTOFMEETINGS_SERVER_message(send_buffer, BUFFER_LENGTH, server_pointer);
     safe_write(server_pointer->socket, send_buffer, message_len);
-    meeting_runner(meeting_socket);
-    return(NULL);
+    meeting_runner(meeting_socket, attendee_list, this_meeting, server_pointer);
 }
 
-void meeting_runner(int socket) {
+void create_idle_timer(timer_t *timer,  void *params ) {
+        struct sigevent *sev = (void *) malloc(sizeof(struct sigevent));
+        sev->sigev_notify = SIGEV_THREAD;
+        sev->sigev_notify_function = (void *) empty_meeting_timer; 
+        sev->sigev_value.sival_ptr = (void *) params;
+        
+        if(timer_create(CLOCK_REALTIME, sev, timer) < 0) {
+            perror("Error creating a timer. Exting...\n");
+            pthread_exit(NULL);
+        }
+
+}
+
+void start_timer(timer_t *timer, int waiting_time, struct itimerspec *its ) {        
+        its->it_value.tv_sec = waiting_time;
+        its->it_value.tv_nsec = 0;
+        its->it_interval.tv_sec = its->it_value.tv_sec;
+        its->it_interval.tv_nsec = its->it_value.tv_nsec;
+        if(timer_settime(*timer, 0, its, NULL) < 0) {
+            perror("Error starting the timer. Exting...\n");
+            pthread_exit(NULL);
+        }
+        printf("No participants. Meeting will be removed after %d seconds\n", waiting_time);
+}
+
+void stop_timer(timer_t *timer, struct itimerspec *its ) {
+        
+        its->it_value.tv_sec = 0;
+        its->it_value.tv_nsec = 0;
+        its->it_interval.tv_sec = its->it_value.tv_sec;
+        its->it_interval.tv_nsec = its->it_value.tv_nsec;
+        if(timer_settime(*timer, 0, its, NULL) < 0) {
+            perror("Error stopping the timer. Exting...\n");
+            pthread_exit(NULL);
+        }
+        printf("Removal timer stopped\n");
+}
+
+
+int update_participants(int socket_fd, char *message_buffer, Participant_list *list) {
+    const char delimiter[2] = " ";
+    char *next_pointer = strtok(message_buffer, delimiter);
+    char *name = strtok(NULL, delimiter);
+    return add_participant_to_participant_list(socket_fd, name, list);                    
+}
+
+void meeting_runner(int socket, Participant_list *participants, Meeting *this_meeting, Meeting_server *this_server) {
     fd_set master;   
     fd_set read_fds; 
     int fdmax;
@@ -57,10 +134,21 @@ void meeting_runner(int socket) {
     FD_ZERO(&read_fds);
     FD_SET(socket, &master);
     fdmax = socket; 
+    
+    //Timer
+    struct itimerspec its;
+    timer_t my_timer;
+    Timer_params *params = (void *) malloc(sizeof(Timer_params));
+    params->this_meeting = this_meeting;
+    params->this_server = this_server;
+    params->timer = &my_timer;
+    
+    create_idle_timer( &my_timer,  (void *) params );
+    start_timer(&my_timer, 60, &its);
+    printf("Meeting started.\n");
 
     // main loop
     while(1) {
-        printf("Meeting started.\n");
         read_fds = master; 
         if (select(fdmax+1, &read_fds, NULL, NULL, NULL) == -1) {
             perror("Error in select!!!!");
@@ -75,7 +163,12 @@ void meeting_runner(int socket) {
                 if (iterable_fd == socket) {
                     addrlen = sizeof remoteaddr;
                     client_fd = accept(socket,(struct sockaddr *)&remoteaddr,&addrlen);
-
+                    safe_read(client_fd, buf, BUFFER_LENGTH);
+                    update_participants(client_fd, buf, participants);
+                    this_meeting->participant_amount += 1;
+                    if(this_meeting->participant_amount == 1)
+                        stop_timer(&my_timer, &its);
+                    
                     if (client_fd == -1) {
                         perror("Erro accepting new connection!!!");
                         exit(EXIT_FAILURE);
@@ -95,17 +188,30 @@ void meeting_runner(int socket) {
                         } else {
                             perror("recv");
                         }
+                        remove_participant_from_participant_list(iterable_fd, participants);
+                        this_meeting->participant_amount -= 1;
                         close(iterable_fd); 
                         FD_CLR(iterable_fd, &master);
+                        if(this_meeting->participant_amount == 0)
+                                start_timer(&my_timer, 60, &its);
+                        /* If message is from existing connection, send
+                         * them to every socket exept our Meetings
+                         * socket and senders socket. Also request list
+                         * of current participants.
+                         */    
                     } else {
-                        // If messages from existing connections, send
-                        // them to every socket exept our Meetings
-                        // socket and senders socket.
-                        for(other_fd = 0; other_fd <= fdmax; other_fd++) {
-                            if (FD_ISSET(other_fd, &master)) {
-                                if (other_fd != socket && other_fd != iterable_fd) {
-                                    if (write(other_fd, buf, message_len) == -1) {
-                                        perror("Error in sending");
+                        // If client requested for participant list
+                        if(strncmp(buf, "list", 5) == 0) {
+                            message_len = create_participant_list_message(buf, participants, BUFFER_LENGTH);
+                            safe_write(iterable_fd, buf, message_len);
+                        // Send normal message to all participants
+                        } else {
+                            for(other_fd = 0; other_fd <= fdmax; other_fd++) {
+                                if (FD_ISSET(other_fd, &master)) {
+                                    if (other_fd != socket && other_fd != iterable_fd) {
+                                        if (write(other_fd, buf, message_len) == -1) {
+                                            perror("Error in sending the message\n");
+                                        }
                                     }
                                 }
                             }

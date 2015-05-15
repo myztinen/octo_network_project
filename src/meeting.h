@@ -14,6 +14,17 @@ void create_new_meeting(Meeting *new_meeting, char *new_topic, char *new_id, int
  * Inititialize Meeting_server with given values.
  */
 void create_new_server(Meeting_server *server, char *server_id, struct sockaddr_in *addr, int connection_socket);
+
+/*
+ * Remove given meeting from Meeting server data structure by given pointer.
+ */
+int remove_meeting_from_meeting_server(Meeting *this_meeting, Meeting_server *list);
+
+/*
+ * Remove given meeting from Meeting server data structure by given meeting id
+ */
+int remove_meeting_from_meeting_server_by_id(char *meeting_id, Meeting_server *server);
+
 /*
  * Adds the information from connected server to the Meeting_server_list
  */

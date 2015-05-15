@@ -15,7 +15,7 @@ int parse_command(char *message,  Client_state *state) {
         safe_write(state->my_socket, send_buffer, BUFFER_LENGTH);
         shutdown(state->my_socket, SHUT_RD);
 
-    } else if(strncmp("connectController", next_pointer, strlen("connectController")) == 0) {
+    } else if(strncmp("connect", next_pointer, strlen("connect")) == 0) {
         if(state->connected == 1) {
             printf("*******Already connected to somewhere! Disconnect first******\n");
             free(temp_message);
@@ -24,27 +24,21 @@ int parse_command(char *message,  Client_state *state) {
         char *ip = strtok(NULL, delimiter);
         char *port = strtok(NULL, delimiter);
         state->my_socket = connect_to(ip, atoi(port), &(state->connection));
+        if(state->my_socket == 0) {
+            safe_write(STDIN_FILENO, "Connection was not succesfull!\n", 31);
+            free(temp_message);
+            return 0;
+        }
         create_IAMCLIENT_message(send_buffer, BUFFER_LENGTH, state->client_id);
         safe_write(state->my_socket, send_buffer, BUFFER_LENGTH);
         state->connected = 1;
         free(temp_message);
         return state->my_socket;
     
-    } else if(strncmp("connectClient", next_pointer, strlen("connectClient")) == 0) {
-        if(state->connected == 1) {
-            printf("*******Already connected to somewhere! Disconnect first******\n");
-            free(temp_message);
-            return 0;
-        }
-        char *ip = strtok(NULL, delimiter);
-        char *port = strtok(NULL, delimiter);
-        state->my_socket = connect_to(ip, atoi(port), &(state->connection));
-        safe_write(state->my_socket, "User connected\n", 16);
-        state->connected = 1;
-        free(temp_message);
-        return state->my_socket;
     } else if(strncmp("getMeetings", next_pointer, strlen("getMeetings")) == 0) {
         safe_write(state->my_socket, GETDISCUSSIONS, 2);
+    } else if(strncmp("list", next_pointer, strlen("list")) == 0) {
+        safe_write(state->my_socket, "list", 5);
     } else if(strncmp("createMeeting", next_pointer, strlen("createMeeting")) == 0) {
         next_pointer = strtok(NULL, delimiter);
         if(strlen(next_pointer) > 20 ) {
@@ -78,7 +72,7 @@ int parse_command(char *message,  Client_state *state) {
 
 void user_interface(char *name) {
     char buffer[BUFFER_LENGTH];
-    int read_amount = 0, sent_amount = 0, max_select, ready;
+    int read_amount = 0, max_select, ready;
     Client_state my_state;
     memset((void *) &(my_state.connection), 0, sizeof(struct sockaddr_in));
     my_state.connected = 0;
@@ -92,6 +86,8 @@ void user_interface(char *name) {
     FD_ZERO(&master);
 
     FD_SET(STDIN_FILENO, &master);
+    printf("********** Welcome to the Meeting client **********\n");
+    printf("****** Type \"help\" to see available commands ******\n");
 
     while(1) {
         memset((void *)buffer, 0, BUFFER_LENGTH);

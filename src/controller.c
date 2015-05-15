@@ -21,7 +21,6 @@ void read_meeting_list_message(char *message, Meeting_server_list *list, struct 
     temp_message = strdup(message);
     command_code = strtok(temp_message, delimiter);
     server_id = strtok(NULL, delimiter);
-    printf("Server id on %s\n", server_id);
     while((strncmp(temp->server_id, server_id, 10) != 0) && (temp != NULL)) {
         temp = temp->next;
     }
@@ -33,12 +32,9 @@ void read_meeting_list_message(char *message, Meeting_server_list *list, struct 
     printf("list length id on %s\n", list_length);
     id = strtok(NULL, delimiter);
     while(id != NULL) { 
-        printf("Id on %s\n", id); 
         topic = strtok(NULL, delimiter);
-        printf("Topic on %s\n", topic);
         port = atoi(strtok(NULL, delimiter));
         amount = strtok(NULL, delimiter);
-        printf("Osallistujat on %s\n", amount);
         Meeting *test_meeting = (void *) malloc(sizeof(Meeting));
         create_new_meeting(test_meeting, topic, id, amount, port);
         add_meeting_to_server(temp, test_meeting);
@@ -75,14 +71,16 @@ int handle_server(int socket, char *send_buffer, char *rec_buffer,  struct socka
             add_server_to_server_list(new_server, list);
             safe_write(socket, ACK, sizeof(ACK));
             printf("Connection initialized\n");
-
         } else if(strncmp(LISTOFMEETINGS_SERVER, next_pointer, strlen(LISTOFMEETINGS_SERVER)) == 0) {
             printf("LISTOFMEETINGS_SERVER received\n");
             read_meeting_list_message(rec_buffer, list, server);
             printf("ListOfMeetings updated\n");
-        } else if(strncmp(QUIT, next_pointer, strlen(QUIT)) == 0) {
-            close(socket);
-            printf("QUIT received\n");
+        } else if(strncmp(MEETINGTERMINATED, next_pointer, strlen(MEETINGTERMINATED)) == 0) {
+            printf("MEETING TERMINATED received\n");
+            next_pointer = strtok(NULL, delimiter);
+            
+            remove_meeting_from_meeting_server_by_id(next_pointer, new_server);
+            printf("Viesti on %s",rec_buffer);
             pthread_exit(EXIT_SUCCESS);
         } else {
             printf("Did not understand the command\n");

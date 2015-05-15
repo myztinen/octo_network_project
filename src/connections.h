@@ -63,6 +63,15 @@ int create_GETDISCUSSIONS_message(char *buffer, Meeting_server_list *list, int b
  */
 int create_TALK_message(char *message, Client_state *state, char *buffer, int buffer_len);
 
-
+/*
+ * This function creates a list of participants from Participant_list data
+ * structure and writes it to a give buffer
+ */
+int create_participant_list_message(char * buffer, Participant_list *list, int buffer_len);
+/*
+ * This function creates a message that Server sends to Controller when meeting has been
+ * terminated.
+ */
+int create_MEETINGTERMINATED_message(char * buffer, Meeting *this_meeting,  int buffer_len);
 
 #endif
